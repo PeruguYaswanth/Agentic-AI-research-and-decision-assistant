@@ -42,7 +42,7 @@ export interface HistoryItem {
   sources_count: number;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://agentic-ai-research-and-decision.onrender.com/api';
 
 export async function uploadDocument(file: File): Promise<DocumentItem> {
   const formData = new FormData();
