@@ -4,8 +4,9 @@ from typing import Optional
 
 class Settings(BaseSettings):
     OPENAI_API_KEY: Optional[str] = None
+    COHERE_API_KEY: Optional[str] = None
     LLM_MODEL: str = "gpt-4o-mini"
-    EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
+    EMBEDDING_MODEL: str = "embed-english-v3.0"
     
     TAVILY_API_KEY: Optional[str] = None
     

@@ -10,9 +10,6 @@ from app.api.history import router as history_router
 async def lifespan(app: FastAPI):
     # Initialize DB schemas on startup
     await init_db()
-    # Pre-load local SentenceTransformer embedding model at startup
-    from app.rag.vector_store import get_sentence_transformer_model
-    get_sentence_transformer_model()
     yield
 
 app = FastAPI(
