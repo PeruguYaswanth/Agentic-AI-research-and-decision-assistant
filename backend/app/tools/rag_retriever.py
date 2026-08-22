@@ -1,43 +1,33 @@
 import logging
 from typing import List, Dict, Any, Optional
-from app.rag.vector_store import get_vector_store
+from app.rag.hybrid_retriever import HybridRetriever
 
 logger = logging.getLogger(__name__)
 
 class RAGRetrieverTool:
+    """
+    RAG Retriever Tool utilizing Hybrid (Vector + BM25) retrieval with document isolation.
+    """
     def __init__(self):
-        self.vector_store = get_vector_store()
+        self.hybrid_retriever = HybridRetriever()
 
-    def retrieve(self, query: str, k: int = 4, document_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    def retrieve(
+        self,
+        query: str,
+        k: int = 5,
+        document_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
         """
-        Retrieves top-k relevant document chunks from ChromaDB vector store.
-        Optionally filters by document_id.
-        Returns list of dicts with content, filename, page_number, similarity_score, source.
+        Retrieves top-k relevant document chunks from ChromaDB + BM25 index.
+        Optionally isolates retrieval to a specific document_id.
         """
         try:
-            filter_dict = {"document_id": document_id} if document_id else None
-            if filter_dict:
-                results_with_score = self.vector_store.similarity_search_with_score(query, k=k, filter=filter_dict)
-            else:
-                results_with_score = self.vector_store.similarity_search_with_score(query, k=k)
-
-            retrieved_chunks = []
-            for doc, score in results_with_score:
-                metadata = doc.metadata or {}
-                filename = metadata.get("filename", "Uploaded Document")
-                page_num = metadata.get("page_number", 1)
-                
-                retrieved_chunks.append({
-                    "content": doc.page_content,
-                    "filename": filename,
-                    "page_number": page_num,
-                    "similarity_score": float(score),
-                    "source": f"{filename} (Page {page_num})" if page_num else filename,
-                    "document_id": metadata.get("document_id"),
-                    "type": "rag"
-                })
-            return retrieved_chunks
+            return self.hybrid_retriever.retrieve(
+                query=query,
+                top_k=k,
+                document_id=document_id,
+                include_neighbors=True
+            )
         except Exception as e:
-            logger.error(f"Error executing RAG vector search for query '{query}': {e}")
+            logger.error(f"Error executing hybrid RAG retrieval for query '{query}': {e}")
             return []
-

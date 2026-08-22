@@ -7,6 +7,9 @@ class ResearchState(TypedDict):
     plan: List[str]
     current_step: str
 
+    freshness_category: str  # REAL_TIME, TIME_SENSITIVE, STABLE_KNOWLEDGE, MIXED
+    current_datetime_str: str
+
     requires_web_search: bool
     requires_rag: bool
     is_factual: bool
@@ -19,6 +22,12 @@ class ResearchState(TypedDict):
     retrieved_documents: List[Dict[str, Any]]
 
     analysis: str
+    key_findings: List[str]
+    claims: List[Dict[str, Any]]
+    conflicts_detected: List[str]
+
+    confidence_level: str  # HIGH, MEDIUM, LOW
+    confidence_reason: str
 
     validation_result: str  # "PASS" or "FAIL"
     validation_feedback: str

@@ -10,6 +10,9 @@ class SourceItem(BaseModel):
     title: str
     url: Optional[str] = None
     snippet: Optional[str] = None
+    publisher: Optional[str] = None
+    published_date: Optional[str] = None
+    authority_score: Optional[float] = None
     source: str = "web"  # web or rag
 
 class ExecutionStep(BaseModel):
@@ -24,6 +27,10 @@ class ResearchResponse(BaseModel):
     question: str
     plan: Optional[List[str]] = None
     final_answer: str
+    confidence_level: Optional[str] = "HIGH"  # HIGH, MEDIUM, LOW
+    confidence_reason: Optional[str] = None
+    key_findings: Optional[List[str]] = None
+    freshness_category: Optional[str] = "REAL_TIME"
     sources: List[SourceItem] = []
     execution_logs: List[ExecutionStep] = []
     status: str = "completed"
@@ -55,4 +62,3 @@ class RAGQueryResponse(BaseModel):
     answer: str
     document_id: Optional[str] = None
     sources: List[SourceItem] = []
-

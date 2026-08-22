@@ -3,10 +3,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
 
 class Settings(BaseSettings):
+    GROQ_API_KEY: Optional[str] = None
+    GROQ_MODEL: Optional[str] = None
     OPENAI_API_KEY: Optional[str] = None
-    COHERE_API_KEY: Optional[str] = None
-    LLM_MODEL: str = "gpt-4o-mini"
-    EMBEDDING_MODEL: str = "embed-english-v3.0"
+    LLM_MODEL: str = "openai/gpt-oss-120b"
+    EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
     
     TAVILY_API_KEY: Optional[str] = None
     

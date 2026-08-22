@@ -12,6 +12,7 @@ from app.db.models import Conversation, Message, ResearchSession, ResearchSource
 from app.schemas.research import ChatRequest, ResearchResponse, SourceItem, ExecutionStep
 from app.graph.builder import build_research_graph
 from app.graph.state import ResearchState
+from app.graph.nodes import get_current_datetime_str
 
 router = APIRouter(prefix="/api", tags=["Research & Chat"])
 
@@ -51,6 +52,8 @@ async def conduct_research(request: ChatRequest, db: AsyncSession = Depends(get_
         "session_id": session_id,
         "plan": [],
         "current_step": "init",
+        "freshness_category": "REAL_TIME",
+        "current_datetime_str": get_current_datetime_str(),
         "requires_web_search": True,
         "requires_rag": False,
         "is_factual": True,
@@ -60,6 +63,11 @@ async def conduct_research(request: ChatRequest, db: AsyncSession = Depends(get_
         "web_results": [],
         "retrieved_documents": [],
         "analysis": "",
+        "key_findings": [],
+        "claims": [],
+        "conflicts_detected": [],
+        "confidence_level": "HIGH",
+        "confidence_reason": "",
         "validation_result": "",
         "validation_feedback": "",
         "missing_information": [],
@@ -121,6 +129,10 @@ async def conduct_research(request: ChatRequest, db: AsyncSession = Depends(get_
         question=request.question,
         plan=final_state.get("plan", []),
         final_answer=final_state.get("final_answer", ""),
+        confidence_level=final_state.get("confidence_level", "HIGH"),
+        confidence_reason=final_state.get("confidence_reason", ""),
+        key_findings=final_state.get("key_findings", []),
+        freshness_category=final_state.get("freshness_category", "REAL_TIME"),
         sources=[SourceItem(**s) for s in final_state.get("sources", [])],
         execution_logs=[
             ExecutionStep(
@@ -143,7 +155,6 @@ async def stream_research(request: ChatRequest, db: AsyncSession = Depends(get_d
     session_id = str(uuid.uuid4())
 
     async def event_generator():
-        # Yield init event
         yield f"event: session_info\ndata: {json.dumps({'session_id': session_id, 'conversation_id': conversation_id})}\n\n"
 
         graph = build_research_graph()
@@ -154,6 +165,8 @@ async def stream_research(request: ChatRequest, db: AsyncSession = Depends(get_d
             "session_id": session_id,
             "plan": [],
             "current_step": "init",
+            "freshness_category": "REAL_TIME",
+            "current_datetime_str": get_current_datetime_str(),
             "requires_web_search": True,
             "requires_rag": False,
             "is_factual": True,
@@ -163,6 +176,11 @@ async def stream_research(request: ChatRequest, db: AsyncSession = Depends(get_d
             "web_results": [],
             "retrieved_documents": [],
             "analysis": "",
+            "key_findings": [],
+            "claims": [],
+            "conflicts_detected": [],
+            "confidence_level": "HIGH",
+            "confidence_reason": "",
             "validation_result": "",
             "validation_feedback": "",
             "missing_information": [],
@@ -173,7 +191,6 @@ async def stream_research(request: ChatRequest, db: AsyncSession = Depends(get_d
             "execution_logs": []
         }
 
-        # Stream node-by-node updates from LangGraph
         accumulated_state = initial_state
         for output in graph.stream(initial_state):
             for node_name, node_state in output.items():
@@ -193,7 +210,8 @@ async def stream_research(request: ChatRequest, db: AsyncSession = Depends(get_d
         # Final answer event
         final_answer = accumulated_state.get("final_answer", "")
         sources = accumulated_state.get("sources", [])
-        yield f"event: final_answer\ndata: {json.dumps({'final_answer': final_answer, 'sources': sources, 'session_id': session_id})}\n\n"
+        confidence = accumulated_state.get("confidence_level", "HIGH")
+        yield f"event: final_answer\ndata: {json.dumps({'final_answer': final_answer, 'sources': sources, 'confidence_level': confidence, 'session_id': session_id})}\n\n"
         yield f"event: complete\ndata: {json.dumps({'status': 'completed'})}\n\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
