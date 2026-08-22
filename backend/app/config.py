@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     
     TAVILY_API_KEY: Optional[str] = None
     
+    ENABLE_RERANKER: bool = False
+    
     DATABASE_URL: str = "sqlite+aiosqlite:///./research_assistant.db"
     CHROMA_PERSIST_DIRECTORY: str = "./chroma_db"
     

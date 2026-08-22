@@ -1,15 +1,21 @@
 import logging
+from functools import lru_cache
 from typing import List, Dict, Any, Optional
 from app.rag.hybrid_retriever import HybridRetriever
 
 logger = logging.getLogger(__name__)
 
+@lru_cache(maxsize=1)
+def get_hybrid_retriever() -> HybridRetriever:
+    return HybridRetriever()
+
 class RAGRetrieverTool:
     """
     RAG Retriever Tool utilizing Hybrid (Vector + BM25) retrieval with document isolation.
     """
-    def __init__(self):
-        self.hybrid_retriever = HybridRetriever()
+    @property
+    def hybrid_retriever(self) -> HybridRetriever:
+        return get_hybrid_retriever()
 
     def retrieve(
         self,

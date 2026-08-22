@@ -1,32 +1,42 @@
 import os
 import logging
-from typing import List, Optional
-import chromadb
-from langchain_community.vectorstores import Chroma
+from functools import lru_cache
+from typing import List, Optional, Any
 from langchain_core.embeddings import Embeddings
-from sentence_transformers import SentenceTransformer
 
 from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Global singleton instance for the Sentence Transformer model
-_st_model_instance: Optional[SentenceTransformer] = None
+@lru_cache(maxsize=1)
+def get_sentence_transformer_model():
+    """
+    Returns the cached singleton SentenceTransformer instance.
+    Lazy loaded on first actual embedding call to ensure low memory footprint on Render.
+    PyTorch thread pools are constrained to 1 thread for 512 MiB RAM compliance.
+    """
+    model_name = settings.EMBEDDING_MODEL or "all-MiniLM-L6-v2"
+    if "embed-english" in model_name.lower() or "text-embedding" in model_name.lower():
+        model_name = "all-MiniLM-L6-v2"
 
-def get_sentence_transformer_model() -> SentenceTransformer:
-    """
-    Returns the singleton SentenceTransformer('all-MiniLM-L6-v2') model instance.
-    Loaded ONCE on demand and reused for all requests to ensure low memory footprint on Render.
-    """
-    global _st_model_instance
-    if _st_model_instance is None:
-        model_name = settings.EMBEDDING_MODEL or "all-MiniLM-L6-v2"
-        if "embed-english" in model_name.lower() or "text-embedding" in model_name.lower():
-            model_name = "all-MiniLM-L6-v2"
-        logger.info(f"Loading local SentenceTransformer model '{model_name}' on CPU...")
-        _st_model_instance = SentenceTransformer(model_name, device="cpu")
-        logger.info(f"SentenceTransformer '{model_name}' loaded successfully.")
-    return _st_model_instance
+    logger.info(f"Loading embedding model '{model_name}' on CPU...")
+    
+    # Configure PyTorch CPU settings before loading model
+    try:
+        import torch
+        torch.set_num_threads(1)
+        if hasattr(torch, "set_num_interop_threads"):
+            try:
+                torch.set_num_interop_threads(1)
+            except RuntimeError:
+                pass
+    except ImportError:
+        pass
+
+    from sentence_transformers import SentenceTransformer
+    model = SentenceTransformer(model_name, device="cpu")
+    logger.info(f"Embedding model '{model_name}' loaded successfully.")
+    return model
 
 class LocalMiniLMEmbeddings(Embeddings):
     """
@@ -42,7 +52,12 @@ class LocalMiniLMEmbeddings(Embeddings):
             return []
         model = get_sentence_transformer_model()
         try:
-            embeddings = model.encode(texts, show_progress_bar=False, normalize_embeddings=True)
+            try:
+                import torch
+                with torch.inference_mode():
+                    embeddings = model.encode(texts, show_progress_bar=False, normalize_embeddings=True)
+            except ImportError:
+                embeddings = model.encode(texts, show_progress_bar=False, normalize_embeddings=True)
             return [list(map(float, vec)) for vec in embeddings]
         except Exception as e:
             logger.error(f"SentenceTransformer embed_documents error: {e}")
@@ -51,25 +66,31 @@ class LocalMiniLMEmbeddings(Embeddings):
     def embed_query(self, text: str) -> List[float]:
         model = get_sentence_transformer_model()
         try:
-            vec = model.encode(text, show_progress_bar=False, normalize_embeddings=True)
+            try:
+                import torch
+                with torch.inference_mode():
+                    vec = model.encode(text, show_progress_bar=False, normalize_embeddings=True)
+            except ImportError:
+                vec = model.encode(text, show_progress_bar=False, normalize_embeddings=True)
             return [float(x) for x in vec]
         except Exception as e:
             logger.error(f"SentenceTransformer embed_query error: {e}")
             raise e
 
-_embeddings_instance: Optional[LocalMiniLMEmbeddings] = None
-
+@lru_cache(maxsize=1)
 def get_embeddings_model() -> Embeddings:
-    global _embeddings_instance
-    if _embeddings_instance is None:
-        _embeddings_instance = LocalMiniLMEmbeddings()
-    return _embeddings_instance
+    return LocalMiniLMEmbeddings()
 
-def get_vector_store() -> Chroma:
+@lru_cache(maxsize=1)
+def get_vector_store():
     """
-    Initializes and returns the persistent ChromaDB collection for Knowledge Base RAG.
+    Initializes and returns the singleton persistent ChromaDB collection for Knowledge Base RAG.
     Ensures vector dimensionality matches 384 dimensions for all-MiniLM-L6-v2.
     """
+    logger.info("Initializing vector store...")
+    import chromadb
+    from langchain_community.vectorstores import Chroma
+
     embeddings = get_embeddings_model()
     persist_dir = settings.CHROMA_PERSIST_DIRECTORY
     os.makedirs(persist_dir, exist_ok=True)
@@ -100,4 +121,5 @@ def get_vector_store() -> Chroma:
         embedding_function=embeddings,
         persist_directory=persist_dir
     )
+    logger.info("Vector store initialized.")
     return vector_store

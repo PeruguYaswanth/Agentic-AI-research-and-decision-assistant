@@ -48,8 +48,14 @@ class DocumentProcessor:
     def __init__(self, chunk_size: int = 800, chunk_overlap: int = 120):
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
-        self.vector_store = get_vector_store()
-        self.bm25_indexer = get_bm25_indexer()
+
+    @property
+    def vector_store(self):
+        return get_vector_store()
+
+    @property
+    def bm25_indexer(self):
+        return get_bm25_indexer()
 
     def process_and_index_file(
         self,

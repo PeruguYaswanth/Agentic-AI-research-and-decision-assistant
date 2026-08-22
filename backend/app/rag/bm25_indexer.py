@@ -122,10 +122,8 @@ class BM25Indexer:
         results.sort(key=lambda x: x[1], reverse=True)
         return results[:top_k]
 
-_bm25_instance: Optional[BM25Indexer] = None
+from functools import lru_cache
 
+@lru_cache(maxsize=1)
 def get_bm25_indexer() -> BM25Indexer:
-    global _bm25_instance
-    if _bm25_instance is None:
-        _bm25_instance = BM25Indexer()
-    return _bm25_instance
+    return BM25Indexer()

@@ -1,10 +1,24 @@
 import re
 import logging
+from functools import lru_cache
 from typing import List, Dict, Any, Optional
+from app.config import settings
 from app.rag.vector_store import get_vector_store
 from app.rag.bm25_indexer import get_bm25_indexer
 
 logger = logging.getLogger(__name__)
+
+@lru_cache(maxsize=1)
+def get_reranker_model():
+    """
+    Optional lazy loaded CrossEncoder model.
+    Only loaded if ENABLE_RERANKER=True.
+    """
+    logger.info("Loading CrossEncoder reranker model on CPU...")
+    from sentence_transformers import CrossEncoder
+    reranker = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2", device="cpu")
+    logger.info("CrossEncoder reranker model loaded.")
+    return reranker
 
 def preprocess_query(query: str) -> List[str]:
     """
@@ -37,10 +51,15 @@ class HybridRetriever:
     3. Multi-Query Dissection
     4. Reciprocal Rank Fusion & Score Normalization
     5. Neighboring Chunk Context Expansion
+    6. Optional Cross-Encoder Reranking (if ENABLE_RERANKER=true)
     """
-    def __init__(self):
-        self.vector_store = get_vector_store()
-        self.bm25_indexer = get_bm25_indexer()
+    @property
+    def vector_store(self):
+        return get_vector_store()
+
+    @property
+    def bm25_indexer(self):
+        return get_bm25_indexer()
 
     def retrieve(
         self,
@@ -125,7 +144,7 @@ class HybridRetriever:
             return []
 
         # 3. Hybrid Score Fusion
-        # Combined score: 0.7 * Vector + 0.3 * BM25 + RRF Boost
+        # Combined score: 0.65 * Vector + 0.35 * BM25 + RRF Boost
         scored_candidates = []
         for chunk_id, chunk_data in candidate_map.items():
             scores = score_tracker[chunk_id]
@@ -139,7 +158,21 @@ class HybridRetriever:
             scored_candidates.append((fused_score, chunk_data))
 
         scored_candidates.sort(key=lambda x: x[0], reverse=True)
-        top_selected = [c for _, c in scored_candidates[:top_k]]
+        top_candidates = [c for _, c in scored_candidates[:top_k * 2]]
+
+        # Optional CrossEncoder Reranking if explicitly enabled
+        if settings.ENABLE_RERANKER and top_candidates:
+            try:
+                reranker = get_reranker_model()
+                pairs = [[query, c.get("raw_text") or c.get("content", "")] for c in top_candidates]
+                cross_scores = reranker.predict(pairs)
+                for c, s in zip(top_candidates, cross_scores):
+                    c["similarity_score"] = float(s)
+                top_candidates.sort(key=lambda x: x["similarity_score"], reverse=True)
+            except Exception as e:
+                logger.warning(f"Reranking error, falling back to fused score: {e}")
+
+        top_selected = top_candidates[:top_k]
 
         # 4. Optional Neighboring Chunk Context Expansion
         if include_neighbors and top_selected:

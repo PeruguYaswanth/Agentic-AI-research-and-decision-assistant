@@ -6,11 +6,19 @@ from app.api.chat import router as chat_router
 from app.api.documents import router as documents_router
 from app.api.history import router as history_router
 
+import logging
+
+logger = logging.getLogger("app.main")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialize DB schemas on startup
+    logger.info("Starting FastAPI application...")
+    logger.info("Initializing database schemas...")
     await init_db()
+    logger.info("Database schemas initialized.")
+    logger.info("Application startup complete (lazy model loading enabled for 512 MiB limit).")
     yield
+    logger.info("Shutting down FastAPI application...")
 
 app = FastAPI(
     title="Agentic AI Research & Decision Assistant API",
@@ -42,8 +50,15 @@ rag_router = APIRouter(prefix="/api/rag", tags=["RAG Knowledge Base"])
 rag_router.add_api_route("/query", query_documents, methods=["POST"], response_model=RAGQueryResponse)
 app.include_router(rag_router)
 
-@app.get("/health", tags=["Health"])
+@app.get("/", tags=["Health"])
+async def root():
+    return {
+        "status": "healthy",
+        "service": "Agentic AI Research & Decision Assistant",
+        "version": "1.0.0"
+    }
 
+@app.get("/health", tags=["Health"])
 async def health_check():
     return {
         "status": "healthy",

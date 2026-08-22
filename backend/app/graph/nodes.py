@@ -1,10 +1,9 @@
 import json
 import re
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
 from langchain_core.messages import SystemMessage, HumanMessage
-from langchain_openai import ChatOpenAI
 
 from app.config import settings
 from app.graph.state import ResearchState
@@ -12,8 +11,6 @@ from app.tools.web_search import WebSearchTool
 from app.tools.rag_retriever import RAGRetrieverTool
 
 logger = logging.getLogger(__name__)
-
-from datetime import datetime, timezone
 
 def get_current_datetime_str() -> str:
     """Returns dynamic current formatted date and time for temporal grounding."""
@@ -24,6 +21,7 @@ def get_current_year_str() -> str:
     return str(datetime.now(timezone.utc).year)
 
 def get_llm():
+    from langchain_openai import ChatOpenAI
     if settings.GROQ_API_KEY and settings.GROQ_API_KEY.strip() and not settings.GROQ_API_KEY.startswith("your_"):
         try:
             model = settings.GROQ_MODEL or (settings.LLM_MODEL if settings.LLM_MODEL not in ["gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo"] else "openai/gpt-oss-120b") or "openai/gpt-oss-120b"
