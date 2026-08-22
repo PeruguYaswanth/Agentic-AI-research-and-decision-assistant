@@ -239,34 +239,15 @@ export default function DocumentsPage() {
         )}
 
         {queryResult && (
-          <div className="p-4 rounded-lg bg-slate-900/90 border border-blue-500/30 space-y-3 animate-in fade-in">
+          <div className="p-4 rounded-lg bg-slate-900/90 border border-blue-500/30 space-y-2 animate-in fade-in">
             <div className="flex items-center gap-2 text-xs font-semibold text-blue-400">
               <Sparkles className="w-3.5 h-3.5" />
               <span>Grounded Document Answer</span>
             </div>
             
-            <div className="text-xs leading-relaxed text-slate-200 whitespace-pre-line bg-slate-950/60 p-3 rounded border border-slate-800">
+            <div className="text-xs leading-relaxed text-slate-200 whitespace-pre-line bg-slate-950/60 p-3.5 rounded border border-slate-800">
               {queryResult.answer}
             </div>
-
-            {queryResult.sources && queryResult.sources.length > 0 && (
-              <div className="space-y-1.5 pt-1">
-                <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                  <BookOpen className="w-3 h-3" />
-                  <span>Document Sources Referenced</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {queryResult.sources.map((src, idx) => (
-                    <div key={idx} className="p-2 rounded bg-slate-950/40 border border-slate-800 text-[11px]">
-                      <div className="font-medium text-slate-300">📄 {src.title}</div>
-                      {src.snippet && (
-                        <div className="text-slate-400 mt-1 line-clamp-2 italic">{src.snippet}</div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         )}
       </div>

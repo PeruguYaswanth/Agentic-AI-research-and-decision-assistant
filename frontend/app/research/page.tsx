@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Send, Bot, Sparkles, BookOpen, Layers, Copy, Check, RotateCcw, AlertCircle } from 'lucide-react';
+import { Send, Bot, Sparkles, BookOpen, Layers, Copy, Check, RotateCcw, AlertCircle, ShieldCheck, ShieldAlert } from 'lucide-react';
 import AgentTimeline from '@/components/AgentTimeline';
 import SourceDrawer from '@/components/SourceDrawer';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
@@ -19,6 +19,7 @@ function ResearchContent() {
   const [plan, setPlan] = useState<string[]>([]);
   const [sources, setSources] = useState<SourceItem[]>([]);
   const [finalAnswer, setFinalAnswer] = useState<string>('');
+  const [confidenceLevel, setConfidenceLevel] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'timeline' | 'sources'>('timeline');
   const [copied, setCopied] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -36,6 +37,7 @@ function ResearchContent() {
     setPlan([]);
     setSources([]);
     setFinalAnswer('');
+    setConfidenceLevel(null);
 
     await streamResearch(q, undefined, {
       onStatus: (step) => {
@@ -49,6 +51,9 @@ function ResearchContent() {
       },
       onFinalAnswer: (data) => {
         setFinalAnswer(data.final_answer);
+        if (data.confidence_level) {
+          setConfidenceLevel(data.confidence_level);
+        }
         if (data.sources && data.sources.length > 0) {
           setSources(data.sources);
         }
@@ -87,7 +92,7 @@ function ResearchContent() {
             <span>Research & Decision Studio</span>
           </h1>
           <p className="text-xs text-slate-400 mt-1">
-            Submit complex technical questions for autonomous planning, multi-source retrieval, and decision validation.
+            Autonomous multi-agent research with live web page parsing, evidence cross-verification, and claim-level validation.
           </p>
         </div>
 
@@ -107,6 +112,7 @@ function ResearchContent() {
                 setPlan([]);
                 setSources([]);
                 setActiveQuestion('');
+                setConfidenceLevel(null);
               }}
               className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 hover:bg-slate-800 text-xs font-medium text-slate-300 flex items-center gap-1.5 transition-colors"
             >
@@ -130,7 +136,7 @@ function ResearchContent() {
             type="text"
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            placeholder="e.g. Should I use FastAPI or Django for building an AI-powered resume screening application?"
+            placeholder="e.g. What is the current price of Bitcoin? Or: Who is the current CEO of OpenAI?"
             className="flex-1 bg-transparent px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none"
             disabled={isResearching}
           />
@@ -167,9 +173,23 @@ function ResearchContent() {
         <div className="lg:col-span-7 space-y-4">
           <div className="rounded-xl bg-[#0e1420] border border-slate-800 p-5 min-h-[480px]">
             {activeQuestion && (
-              <div className="mb-4 pb-3 border-b border-slate-800">
-                <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Active Inquiry</div>
-                <div className="text-sm font-medium text-slate-200 mt-1">{activeQuestion}</div>
+              <div className="mb-4 pb-3 border-b border-slate-800 flex items-start justify-between gap-3">
+                <div className="flex-1">
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Active Inquiry</div>
+                  <div className="text-sm font-medium text-slate-200 mt-1">{activeQuestion}</div>
+                </div>
+                {confidenceLevel && (
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-mono font-semibold border ${
+                    confidenceLevel === 'HIGH'
+                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                      : confidenceLevel === 'MEDIUM'
+                      ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                      : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                  }`}>
+                    <ShieldCheck className="w-3 h-3" />
+                    {confidenceLevel} CONFIDENCE
+                  </span>
+                )}
               </div>
             )}
 
@@ -180,15 +200,15 @@ function ResearchContent() {
                 <div className="w-12 h-12 rounded-2xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-400 animate-pulse">
                   <Sparkles className="w-6 h-6" />
                 </div>
-                <h3 className="text-sm font-semibold text-slate-200">Autonomous Research in Progress</h3>
+                <h3 className="text-sm font-semibold text-slate-200">Autonomous Evidence Research in Progress</h3>
                 <p className="text-xs text-slate-400 max-w-sm leading-relaxed">
-                  The LangGraph multi-agent orchestrator is evaluating the question, collecting evidence, synthesizing findings, and running validation.
+                  The LangGraph multi-agent orchestrator is querying live sources, scraping web pages, cross-verifying evidence, and validating factual claims.
                 </p>
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-20 text-center space-y-2 text-slate-500">
                 <Bot className="w-10 h-10 text-slate-600" />
-                <p className="text-xs">Enter a research query above or click a scenario on the overview page to start.</p>
+                <p className="text-xs">Enter a research query above to begin real-time evidence retrieval.</p>
               </div>
             )}
           </div>
@@ -218,7 +238,7 @@ function ResearchContent() {
               }`}
             >
               <BookOpen className="w-3.5 h-3.5" />
-              <span>Retrieved Sources ({sources.length})</span>
+              <span>Verified Sources ({sources.length})</span>
             </button>
           </div>
 

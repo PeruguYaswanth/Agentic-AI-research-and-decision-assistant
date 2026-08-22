@@ -2,6 +2,9 @@ export interface SourceItem {
   title: string;
   url?: string | null;
   snippet?: string | null;
+  publisher?: string | null;
+  published_date?: string | null;
+  authority_score?: number | null;
   source: 'web' | 'rag';
 }
 
@@ -18,6 +21,10 @@ export interface ResearchResponse {
   question: string;
   plan?: string[];
   final_answer: string;
+  confidence_level?: 'HIGH' | 'MEDIUM' | 'LOW' | string;
+  confidence_reason?: string | null;
+  key_findings?: string[];
+  freshness_category?: string;
   sources: SourceItem[];
   execution_logs: ExecutionStep[];
   status: string;
@@ -108,7 +115,7 @@ export async function streamResearch(
     onStatus?: (step: ExecutionStep) => void;
     onPlan?: (plan: string[]) => void;
     onSources?: (sources: SourceItem[]) => void;
-    onFinalAnswer?: (data: { final_answer: string; sources: SourceItem[]; session_id: string }) => void;
+    onFinalAnswer?: (data: { final_answer: string; sources: SourceItem[]; confidence_level?: string; session_id: string }) => void;
     onError?: (err: Error) => void;
     onComplete?: () => void;
   }

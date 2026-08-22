@@ -1,6 +1,17 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  experimental: {
+    optimizePackageImports: ['lucide-react'],
+  },
+
+  webpack: (config, { dev }) => {
+    if (dev) {
+      config.output = config.output || {};
+      config.output.chunkLoadTimeout = 300000;
+    }
+    return config;
+  },
 
   async rewrites() {
     const backendUrl =
